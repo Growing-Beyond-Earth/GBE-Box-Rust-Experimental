@@ -3,6 +3,7 @@ edition = "2021"
 name = "rp2040-project-template"
 version = "0.1.0"
 
+# embassy is not on crates.io, use the library in ./lib
 [dependencies]
 embassy-embedded-hal = { version = "0.1.0", path = "./lib/embassy/embassy-embedded-hal", features = ["defmt"] }
 embassy-sync = { version = "0.2.0", path = "./lib/embassy/embassy-sync", features = ["defmt"] }
@@ -43,11 +44,11 @@ embedded-hal-1 = { package = "embedded-hal", version = "=1.0.0-alpha.10" }
 embedded-hal-async = "0.2.0-alpha.1"
 embedded-io = { version = "0.4.0", features = ["async", "defmt"] }
 embedded-storage = { version = "0.3" }
-static_cell = { version = "1.1", features = ["nightly"]}
 log = "0.4"
 pio-proc = "0.2"
 pio = "0.2.1"
 rand = { version = "0.8.5", default-features = false }
+once_cell = {version = "1.18.0", default-features = false, features = ["atomic-polyfill"]}
 
 [profile.release]
 debug = true
