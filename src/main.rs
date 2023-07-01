@@ -26,6 +26,12 @@ async fn blink1() -> !{
     }
 }
 
+#[embassy_executor::task]
+async fn connect_wifi(){
+    let ssid:[char;33];
+    let password:[char;64];
+    
+}
 
 #[embassy_executor::task]
 async fn startup_led() -> (){
