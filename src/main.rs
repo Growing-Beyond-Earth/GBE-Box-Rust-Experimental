@@ -9,7 +9,7 @@ use gpio::{Level, Output};
 use {defmt_rtt as _, panic_probe as _};
 use once_cell::sync::Lazy;
 
-// this variable holds the peripheral access with lazy initialization. Memory is allocated at compile time but the value is set at runtime
+// this variable holds the peripheral access with lazy initialization. Memory is allocated at compile time but the value is set at runtime 
 static P:Lazy<Peripherals> = Lazy::new(|| {
     embassy_rp::init(Default::default())
 });
@@ -30,7 +30,7 @@ async fn blink1() -> !{
 async fn connect_wifi(){
     let ssid:[char;33];
     let password:[char;64];
-    
+
 }
 
 #[embassy_executor::task]
