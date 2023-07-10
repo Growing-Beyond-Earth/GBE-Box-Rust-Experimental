@@ -3,7 +3,7 @@
 
 #[embassy_executor::task]
 pub async fn connect_wifi(){
-    let ssid:[char;33];
-    let password:[char;64];
+    let _ssid:[char;33];
+    let _password:[char;64];
 
 }
