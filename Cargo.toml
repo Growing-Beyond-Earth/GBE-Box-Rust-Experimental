@@ -48,10 +48,11 @@ log = "0.4"
 pio-proc = "0.2"
 pio = "0.2.1"
 rand = { version = "0.8.5", default-features = false }
-once_cell = {version = "1.18.0", default-features = false, features = ["atomic-polyfill"]}
+once_cell = { version = "1.18.0", default-features = false, features = ["atomic-polyfill"]}
+static_cell = { version = "1.1", features = ["nightly"]}
 
 [profile.release]
-debug = true
+opt-level = 3
 
 # cargo build/run
 [profile.dev]

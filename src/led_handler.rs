@@ -3,16 +3,14 @@
 mod ws2812;
 use ws2812::Ws2812;
 
-use embassy_rp::pio::Pio;
+use embassy_rp::{pio::Pio, peripherals::{PIO1, PIN_0, DMA_CH1}};
 use embassy_time::{Duration, Timer};
 use smart_leds::RGB8;
 
 #[embassy_executor::task]
-pub async fn startup_led() -> () {
-    let p = embassy_rp::init(Default::default());
-    let Pio { mut common, sm0, .. } = Pio::new(p.PIO0);
-    let mut ws2812:Ws2812<'_, embassy_rp::peripherals::PIO0, 0, 1> = Ws2812::new(&mut common, sm0, p.DMA_CH0, p.PIN_0);
-    loop{
+pub async fn startup_led(led_pio:PIO1, led_pin:PIN_0, led_dma:DMA_CH1) -> () {
+    let Pio { mut common, sm0, .. } = Pio::new(led_pio);
+    let mut ws2812:Ws2812<'_, embassy_rp::peripherals::PIO1, 0, 1> = Ws2812::new(&mut common, sm0, led_dma, led_pin);
     for i in 0..=255{
         let data = [RGB8::new(0, i , 0);1];
         ws2812.write(&data).await;
@@ -23,7 +21,6 @@ pub async fn startup_led() -> () {
         ws2812.write(&data).await;
         Timer::after(Duration::from_millis(7)).await;
     }
-}
 }
 
 
