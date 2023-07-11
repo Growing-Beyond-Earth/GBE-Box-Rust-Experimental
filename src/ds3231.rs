@@ -14,7 +14,7 @@ enum RtcRegisters{
     SecAddr = 0x0,
     MinAddr = 0x1,
     HourAddr = 0x2,
-    DayAddr = 0x3,
+    DayOfTheWeekSSAddr = 0x3,
     DateAddr = 0x4,
     MonAddr = 0x5,
     YrAddr = 0x6,
@@ -37,7 +37,7 @@ impl<I2C:I2c> Ds3231<I2C>{
         let mut buf:[u8;8] = [0;8];
         self.ic2_bus.read(DEFAULT_I2C_ADDR, &mut buf).await?;
         return DateTime{
-            year:buf[0x6] as u16,
+            year:buf[RtcRegisters::YrAddr],
             month: buf[0x5] as u16},
 
     }
