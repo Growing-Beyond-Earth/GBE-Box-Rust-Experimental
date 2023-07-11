@@ -11,10 +11,9 @@ use embassy_rp::pio::Pio;
 use embassy_time::{Duration, Timer};
 use static_cell::make_static;
 use {defmt_rtt as _, panic_probe as _};
-use once_cell::sync::Lazy;
 
 mod led_handler;
-
+mod ds3231;
 
 #[embassy_executor::task]
 async fn wifi_task(
@@ -46,7 +45,7 @@ async fn main(spawner: Spawner) {
     let state = make_static!(cyw43::State::new());
     let (_net_device, mut control, runner) = cyw43::new(state, pwr, spi, fw).await;
     spawner.spawn(wifi_task(runner)).unwrap();
-    spawner.spawn(led_handler::startup_led(p.PIO1,p.PIN_0,p.DMA_CH1)).unwrap();
+    spawner.spawn(led_handler::startup_led(p.PIO1,p.PIN_6,p.DMA_CH1)).unwrap();
 
     control.init(clm).await;
     control
