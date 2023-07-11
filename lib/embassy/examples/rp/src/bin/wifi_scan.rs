@@ -55,7 +55,7 @@ async fn main(spawner: Spawner) {
 
     control.init(clm).await;
     control
-        .set_power_management(cyw43::PowerManagementMode::PowerSave)
+        .set_power_management(cyw43::PowerManagementMode::PowerSave )
         .await;
 
     let mut scanner = control.scan().await;
