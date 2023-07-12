@@ -25,6 +25,7 @@ pub enum Error {
 }
 
 /// Structure containing date and time information
+#[derive(Debug)] //REMOVE ME
 pub struct DateTime {
     /// 0..4095
     pub year: u16,
@@ -55,6 +56,7 @@ pub enum DayOfWeek {
     Friday = 5,
     Saturday = 6,
 }
+
 
 fn day_of_week_from_u8(v: u8) -> Result<DayOfWeek, Error> {
     Ok(match v {
