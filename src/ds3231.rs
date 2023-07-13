@@ -51,16 +51,15 @@ impl<I2C:I2c> Ds3231<I2C>{
     }
 
     pub async fn date_time(&mut self) -> Result<DateTime,<I2C as ErrorType>::Error>{
-        let mut buf:[u8;19] = [0;19];
-        self.ic2_bus.read(DEFAULT_I2C_ADDR, &mut buf).await?;
+        let mut buf:[u8;7] = [0;7];
+        self.ic2_bus.write_read(DEFAULT_I2C_ADDR,&[0], &mut buf).await?;
         info!("{:?}",buf);
-        buf.rotate_left(4);
-        // do some bitshift magic to convert.
+        // do some bitshift magic to convert from rust DateTime format to the RTC's format (idk why they designed it like this).
         return Ok(DateTime{
-            year:(((buf[0x06] & 0b00001111) + ((buf[0x06] >> 4)*10)) as u16) + ((((buf[0x05] >> 7) as u16)*1000u16) +1000u16), // yeah, i know
+            year:(((buf[0x06] & 0b00001111) + ((buf[0x06] >> 4)*10)) as u16) + ((((buf[0x05] >> 7) as u16)*1000u16) +1000u16),
             month: (buf[0x05] & 0b00001111) + ((buf[0x05] & 0b00010000) >> 4) * 10,
             day: ((buf[0x04] & 0b00001111) + (buf[0x04] >> 4)*10),
-            day_of_week: day_of_week_from_u8(buf[0x03]-1).unwrap(),
+            day_of_week: match day_of_week_from_u8(buf[0x03]-1) {Ok(day) => day, Err(_) => DayOfWeek::Monday}, // find the day of the week, if unsure, just pick monday
             hour: ((buf[0x02] & 0b00001111) + ((buf[0x02] & 0b00010000) >> 4)*10),
             minute: ((buf[0x01] & 0b00001111) + (buf[0x01] >> 4)*10),
             second: ((buf[0x00] & 0b00001111) + (buf[0x00] >> 4)*10),
@@ -69,16 +68,24 @@ impl<I2C:I2c> Ds3231<I2C>{
 
     pub async fn set_time(&mut self, dt:DateTime) -> Result<(),<I2C as ErrorType>::Error>{
         // unpack the datetime
+        //[136, 0, 24, 128, 37, 69, 21, 2, 18, 7, 35, 0, 0, 0, 0, 0, 0, 0, 76]
+        //datetime:DateTime { year: 1023, month: 7, day: 12, day_of_week: Monday, hour: 15, minute: 45, secon: 25 }
+
         let DateTime{year, month, day, day_of_week, hour, minute, second} = dt;
         // numbers are for proper configurations
-        let buf =[
-            136,
-            0,
-            24,
-            ( ((second/10) << 4) | (second-(second/10)) ),
-            
+        let month = month & 0b01111111;
+        let year_tens = year - (((year>1999) as u16) * 1000 + 1000);
 
-        ];
+        let buf =[
+            0, // index to start at
+            ( ((second/10) << 4) | (second-(second/10)) ), 
+            ( ((minute/10) << 4) | (minute-(minute/10)) ),
+            ( (0b01000000) | ((hour/10) << 4) | (hour-(hour/10)) ),
+            day_of_week as u8 + 1,
+            day,
+            ( ((year>1999) as u8) << 7) | ( ((month/10) << 4) | (month-(month/10)) ),
+            ( ((year_tens/10) << 4) | (year_tens-(year_tens/10)) ) as u8]; 
+        // fill with constants, If future use of the RTC's features (eg: alarms) remove this and replace it with a read that writes the same bytes
         self.ic2_bus.write(DEFAULT_I2C_ADDR, &buf).await?;
         Ok(())
     }

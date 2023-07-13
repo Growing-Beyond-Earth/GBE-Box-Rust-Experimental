@@ -4,6 +4,7 @@
 
 use cyw43_pio::PioSpi;
 use embassy_executor::Spawner;
+use embassy_rp::rtc::DateTime;
 use embassy_rp::{bind_interrupts, i2c};
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0, USB, I2C0};
@@ -74,12 +75,38 @@ async fn main(spawner: Spawner) {
 
     let mut i2c_rtc = ds3231::Ds3231::new(i2c_bus);
 
+    Timer::after(Duration::from_secs(1)).await;
+    match i2c_rtc.date_time().await{
+        Ok(second) => info!("datetime:{:?}",second),
+        Err(_rtc_error) => info!("ERROR!")
+    };
+    Timer::after(Duration::from_secs(1)).await;
+    match i2c_rtc.date_time().await{
+        Ok(second) => info!("datetime:{:?}",second),
+        Err(_rtc_error) => info!("ERROR!")
+    };
+    Timer::after(Duration::from_secs(5)).await;
+    let funnytime = DateTime{
+        year:2023,
+        month:7,
+        day:13,
+        day_of_week:embassy_rp::rtc::DayOfWeek::Thursday,
+        hour:10,
+        minute:21,
+        second:00,
+    };
+    match i2c_rtc.set_time(funnytime).await{
+        Ok(second) => info!("datetime:{:?}",second),
+        Err(_rtc_error) => info!("ERROR!")
+    };
+
     loop{
         Timer::after(Duration::from_secs(1)).await;
         match i2c_rtc.date_time().await{
             Ok(second) => info!("datetime:{:?}",second),
             Err(_rtc_error) => info!("ERROR!")
         };
-        
     }
+        
+    
 }
