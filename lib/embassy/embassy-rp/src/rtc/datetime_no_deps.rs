@@ -25,7 +25,6 @@ pub enum Error {
 }
 
 /// Structure containing date and time information
-#[derive(Debug)] //REMOVE ME
 pub struct DateTime {
     /// 0..4095
     pub year: u16,

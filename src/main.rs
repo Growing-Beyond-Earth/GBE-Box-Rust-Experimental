@@ -7,7 +7,7 @@ use embassy_executor::Spawner;
 use embassy_rp::rtc::DateTime;
 use embassy_rp::{bind_interrupts, i2c};
 use embassy_rp::gpio::{Level, Output};
-use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0, USB, I2C0};
+use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0, USB, I2C0, I2C1};
 use embassy_rp::pio::Pio;
 use embassy_time::{Duration, Timer};
 use log::info;
@@ -16,11 +16,12 @@ use embassy_rp::usb;
 use {defmt_rtt as _, panic_probe as _};
 
 mod led_handler;
-mod ds3231;
+mod i2c_devices;
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
     I2C0_IRQ => i2c::InterruptHandler<I2C0>;
+    I2C1_IRQ => i2c::InterruptHandler<I2C1>;
 });
 
 //loop that runs usb logger
@@ -71,42 +72,19 @@ async fn main(spawner: Spawner) {
     spawner.spawn(led_handler::startup_led(p.PIO1, p.PIN_6, p.DMA_CH1)).unwrap();
 
     // TEST STARTS HERE!!!!!!!!!!!!!!!!
-    let mut i2c_bus = i2c::I2c::new_async(p.I2C0, p.PIN_17, p.PIN_16, Irqs, embassy_rp::i2c::Config::default());
+    let i2c_bus = i2c::I2c::new_async(p.I2C1, p.PIN_19, p.PIN_18, Irqs, embassy_rp::i2c::Config::default());
 
-    let mut i2c_rtc = ds3231::Ds3231::new(i2c_bus);
-
-    Timer::after(Duration::from_secs(1)).await;
-    match i2c_rtc.date_time().await{
-        Ok(second) => info!("datetime:{:?}",second),
-        Err(_rtc_error) => info!("ERROR!")
-    };
-    Timer::after(Duration::from_secs(1)).await;
-    match i2c_rtc.date_time().await{
-        Ok(second) => info!("datetime:{:?}",second),
-        Err(_rtc_error) => info!("ERROR!")
-    };
-    Timer::after(Duration::from_secs(5)).await;
-    let funnytime = DateTime{
-        year:2023,
-        month:7,
-        day:13,
-        day_of_week:embassy_rp::rtc::DayOfWeek::Thursday,
-        hour:10,
-        minute:21,
-        second:00,
-    };
-    match i2c_rtc.set_time(funnytime).await{
-        Ok(second) => info!("datetime:{:?}",second),
-        Err(_rtc_error) => info!("ERROR!")
-    };
-
+    let mut i2c_device_bus_1 = i2c_devices::I2cDevices::new(i2c_bus);
+    info!("loop started");
     loop{
+        info!("loop");
         Timer::after(Duration::from_secs(1)).await;
-        match i2c_rtc.date_time().await{
-            Ok(second) => info!("datetime:{:?}",second),
-            Err(_rtc_error) => info!("ERROR!")
+        match i2c_device_bus_1.get_moisture().await{
+            Ok(()) => info!("success!"),
+            Err(_) => info!("failed to connect :("),
         };
     }
+
         
     
 }
