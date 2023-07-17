@@ -9,15 +9,20 @@ use embassy_rp::{bind_interrupts, i2c};
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0, USB, I2C0, I2C1};
 use embassy_rp::pio::Pio;
+use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Timer};
 use log::info;
 use static_cell::make_static;
 use embassy_rp::usb;
 use {defmt_rtt as _, panic_probe as _};
-use embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice;
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use once_cell::unsync::Lazy;
 
 mod led_handler;
 mod ds3231;
+mod clocker_1;
+
+
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
@@ -62,6 +67,7 @@ async fn main(spawner: Spawner) {
     let state = make_static!(cyw43::State::new());
     let (_net_device, mut control, runner) = cyw43::new(state, pwr, spi, fw).await;
     spawner.spawn(wifi_task(runner)).unwrap();
+
     //initialize the handle for wifi
     control.init(clm).await;
     control
@@ -73,17 +79,19 @@ async fn main(spawner: Spawner) {
     spawner.spawn(led_handler::startup_led(p.PIO1, p.PIN_6, p.DMA_CH1)).unwrap();
 
     // TEST STARTS HERE!!!!!!!!!!!!!!!!
-    let i2c_bus = i2c::I2c::new_async(p.I2C1, p.PIN_19, p.PIN_18, Irqs, embassy_rp::i2c::Config::default());
+    let i2c_bus = i2c::I2c::new_async(p.I2C0, p.PIN_17, p.PIN_16, Irqs, embassy_rp::i2c::Config::default());
+    let i2c_mutex= Mutex::new(i2c_bus);
 
-    let mut i2c_device_bus_1 = i2c_devices::I2cDevices::new(i2c_bus);
+    let rtc = ds3231::Ds3231::new(&i2c_mutex);
     info!("loop started");
     loop{
         info!("loop");
         Timer::after(Duration::from_secs(1)).await;
-        match i2c_device_bus_1.get_moisture().await{
-            Ok(()) => info!("success!"),
-            Err(_) => info!("failed to connect :("),
+        match rtc.get_rtc_datetime().await{
+            Ok(dt) => info!("{:?}", dt),
+            Err(_) => info!("connection failed!")
         };
+
     }
 
         
