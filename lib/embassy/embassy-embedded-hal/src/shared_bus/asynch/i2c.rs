@@ -35,6 +35,7 @@ pub struct I2cDevice<'a, M: RawMutex, BUS> {
     bus: &'a Mutex<M, BUS>,
 }
 
+
 impl<'a, M: RawMutex, BUS> I2cDevice<'a, M, BUS> {
     /// Create a new `I2cDevice`.
     pub fn new(bus: &'a Mutex<M, BUS>) -> Self {

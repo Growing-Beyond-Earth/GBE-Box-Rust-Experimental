@@ -1,36 +1,10 @@
-#![allow(dead_code)]
-
-use embassy_rp::rtc::DayOfWeek;
-use embassy_rp::{bind_interrupts, rtc::{DateTime,DateTimeError}};
-use embassy_rp::i2c::InterruptHandler;
-use embassy_rp::peripherals::I2C0;
-use embedded_hal_1::i2c::ErrorType;
-use embedded_hal_async::i2c::I2c;
+use core::marker::PhantomData;
+use super::I2cDevice;
+use embassy_rp::rtc::{DayOfWeek, DateTimeError, DateTime};
+use embedded_hal_async::i2c::{I2c, ErrorType};
 use log::info;
-use {defmt_rtt as _, panic_probe as _};
 
 
-
-// who designed this thing??!?!, you need to do some bitshift magic to get your actual value.
-// ds3231 datasheet page 11 https://www.analog.com/media/en/technical-documentation/data-sheets/DS3231.pdf
-/*ds3231 registers:
-    SecAddr = 0x0,
-    MinAddr = 0x1,
-    HourAddr = 0x2,
-    DayOfTheWeekSSAddr = 0x3,
-    DateAddr = 0x4,
-    MonAddr = 0x5,
-    YrAddr = 0x6,
-    CtlAddr = 0x0e,
-    StatAddr = 0x0f,
-*/ 
-
-const RTC_DEFAULT_ADDR:u8 = 0x68;
-const STEMMA_DEFAULT_ADDR:u8 = 0x36;
-
-pub struct I2cDevices<I2C:I2c>{
-    ic2_bus:I2C,
-}
 
 fn day_of_week_from_u8(v: u8) -> Result<DayOfWeek, DateTimeError> {
     Ok(match v {
@@ -45,15 +19,18 @@ fn day_of_week_from_u8(v: u8) -> Result<DayOfWeek, DateTimeError> {
     })
 }
 
-impl<I2C:I2c> I2cDevices<I2C>{
-    pub fn new(i2c_bus:I2C) -> Self{
-        I2cDevices { 
-            ic2_bus:i2c_bus }
-    }
+// Implementations for Ds3231 RTC
+pub struct Ds3231<I2C:I2c>{
+    default_address: u8,
+    is_connected: bool,
+    _i2c:PhantomData<I2C>
+}
 
-    pub async fn date_time(&mut self) -> Result<DateTime,<I2C as ErrorType>::Error>{
+impl<I2C:I2c> Ds3231<I2C>{
+    //updates the stored value for datetime
+    pub async fn get_rtc_datetime(&mut self, i2c_bus:&mut I2C) -> Result<DateTime,<I2C as ErrorType>::Error>{
         let mut buf:[u8;7] = [0;7];
-        self.ic2_bus.write_read(RTC_DEFAULT_ADDR,&[0], &mut buf).await?;
+        i2c_bus.write_read(self.default_address,&[0], &mut buf).await?;
         info!("{:?}",buf);
         // do some bitshift magic to convert from rust DateTime format to the RTC's format (idk why they designed it like this).
         return Ok(DateTime{
@@ -67,11 +44,9 @@ impl<I2C:I2c> I2cDevices<I2C>{
         });
     }
 
-    pub async fn set_time(&mut self, dt:DateTime) -> Result<(),<I2C as ErrorType>::Error>{
-        // unpack the datetime
-        //[136, 0, 24, 128, 37, 69, 21, 2, 18, 7, 35, 0, 0, 0, 0, 0, 0, 0, 76]
-        //datetime:DateTime { year: 1023, month: 7, day: 12, day_of_week: Monday, hour: 15, minute: 45, secon: 25 }
 
+    // sets the rtc to the correct time.
+    pub async fn set_rtc_datetime(&mut self, i2c_bus:&mut I2C, dt:DateTime) -> Result<(),<I2C as ErrorType>::Error>{
         let DateTime{year, month, day, day_of_week, hour, minute, second} = dt;
         // numbers are for proper configurations
         let month = month & 0b01111111;
@@ -85,17 +60,18 @@ impl<I2C:I2c> I2cDevices<I2C>{
             day,
             (((year > 1999) as u8) << 7) | ((month/10)<<4)| (month-((month/10)*10)),
             ((year_tens/10)<<4) as u8 | (year_tens-((year_tens/10)*10)) as u8];
-        self.ic2_bus.write(RTC_DEFAULT_ADDR, &buf).await?;
-        Ok(())
-    }
-
-    // stemma soil sensor
-    pub async fn get_moisture(&mut self) -> Result<(),<I2C as ErrorType>::Error>{
-        let mut buf:[u8;2] = [0;2];
-        self.ic2_bus.write_read(STEMMA_DEFAULT_ADDR, &[0x0F,0x10], &mut buf).await?;
-        info!("[{:#010b},{:#010b}]",buf[0],buf[1]);
-        let moisture = ((buf[0] as u16)<<8) | (buf[1] as u16);
-        info!("moisture:{}", moisture);
+        i2c_bus.write(self.default_address, &buf).await?;
         Ok(())
     }
 }
+
+impl<I2C:I2c> I2cDevice for Ds3231<I2C>{
+    fn get_default_address(&self) -> u8{
+        self.default_address
+    }
+
+    fn is_connected(&self) -> bool {
+        self.is_connected
+    }
+}
+

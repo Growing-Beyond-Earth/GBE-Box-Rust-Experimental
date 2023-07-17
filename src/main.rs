@@ -14,9 +14,10 @@ use log::info;
 use static_cell::make_static;
 use embassy_rp::usb;
 use {defmt_rtt as _, panic_probe as _};
+use embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice;
 
 mod led_handler;
-mod i2c_devices;
+mod ds3231;
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
